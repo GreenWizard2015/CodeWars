@@ -1,7 +1,8 @@
-# from https://github.com/ChristianECooper/CodeWars-Python-TestFramework/blob/master/Test.py
+# based on https://github.com/ChristianECooper/CodeWars-Python-TestFramework/blob/master/Test.py
 
 import sys
 from datetime import datetime
+import atexit
 
 class Test(object):
     """
@@ -10,20 +11,32 @@ class Test(object):
     """
     
     def __init__(self):
-        self.desc = "Undefined"
-        self._it = "Undefined"
-        self.failures = 0
-        self.successes = 0
+        self.totalFailures = 0
+        self.totalSuccesses = 0
+        
+        self.currentBlockErrors = list()
+        self.currentBlock = "Main tests"
+        self.currentBlockFailures = 0
+        self.currentBlockSuccesses = 0
+        
         self.start = datetime.now()
 
     def describe(self, msg):
         print(msg)
-        self.desc = msg
 
     def it(self, msg):
-        print()
-        print(msg)
-        self._it = msg
+        total = len(self.currentBlockErrors) + self.currentBlockSuccesses
+        if total > 0:
+            print("%s: %d/%d" % (self.currentBlock, self.currentBlockSuccesses, total))
+            if total != self.currentBlockSuccesses:
+                for err in self.currentBlockErrors:
+                    print(err)
+                print()
+        
+        self.currentBlock = msg
+        self.currentBlockFailures = 0
+        self.currentBlockSuccesses = 0
+        self.currentBlockErrors.clear()
 
     def _assert(self, p, actual, expected, msg):
         if not p(expected, actual):
@@ -51,26 +64,27 @@ class Test(object):
         self._assert(be, b, None, msg)
 
     def _error(self, msg, expected, actual):
-        print("*** ERROR: {}".format(msg.format(expected, actual)))
-        self.failures += 1
+        self.currentBlockErrors.append("*** ERROR: {}".format(msg.format(expected, actual)))
+        self.totalFailures += 1
 
     def _success(self):
-        print("Test Passed")
-        self.successes += 1
+        self.currentBlockSuccesses += 1
+        self.totalSuccesses += 1
 
     def report(self):
         end = datetime.now()
+        self.it("")
         print("\nTest run complete")
-        print("Passed: {}".format(self.successes))
-        print("Failed: {}".format(self.failures))
-        print("Total:  {}".format(self.successes + self.failures))
+        print("Passed: {}".format(self.totalSuccesses))
+        print("Failed: {}".format(self.totalFailures))
+        print("Total:  {}".format(self.totalSuccesses + self.totalFailures))
 
         delta = end - self.start
         print("Process took {:,}ms to complete".format((delta.microseconds + 1000000 * delta.seconds) // 1000))
-        if self.failures == 0:
+        if self.totalFailures == 0:
             print("Happy Days!")
         else:
             print("Better luck next time!")
 
 test = Test()
-sys.exitfunc=test.report
+atexit.register(test.report)
